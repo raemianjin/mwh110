@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- adaptive icon safe zone ~ center 66x66 -->
+    <group
+        android:translateX="30"
+        android:translateY="26">
+        <path
+            android:fillColor="#4D9EFF"
+            android:pathData="M24,2C13.51,2 5,10.51 5,21c0,14 19,33 19,33s19,-19 19,-33C43,10.51 34.49,2 24,2zM24,28.5c-4.14,0 -7.5,-3.36 -7.5,-7.5s3.36,-7.5 7.5,-7.5 7.5,3.36 7.5,7.5 -3.36,7.5 -7.5,7.5z" />
+        <path
+            android:fillColor="#BFE0FF"
+            android:pathData="M24,13.5c-4.14,0 -7.5,3.36 -7.5,7.5s3.36,7.5 7.5,7.5 7.5,-3.36 7.5,-7.5 -3.36,-7.5 -7.5,-7.5z" />
+    </group>
+</vector>

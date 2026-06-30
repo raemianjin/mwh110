@@ -1,0 +1,44 @@
+name: Android Debug Build
+on:
+  push:
+    branches: [ main, master, '**' ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Configure local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Build Debug APK (with retry)
+        run: |
+          chmod +x gradlew
+          for i in 1 2 3; do
+            echo "=== Build attempt $i/3 ==="
+            if ./gradlew assembleDebug --no-daemon --stacktrace; then
+              echo "Build succeeded on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 15s..."
+            sleep 15
+          done
+          echo "All 3 attempts failed"
+          exit 1
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: mywhere-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14

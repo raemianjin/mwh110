@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "mywhere": {
+      "$group": {
+        ".read": true,
+        ".write": true,
+        "$member": {
+          ".validate": "newData.hasChild('c') || newData.hasChildren(['lat','lng','t'])"
+        }
+      }
+    }
+  }
+}

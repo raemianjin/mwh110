@@ -1,0 +1,51 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace 'com.jfamily.mywhere'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.jfamily.mywhere"
+        minSdk 26
+        targetSdk 34
+        versionCode 6
+        versionName "1.1.0"
+    }
+
+    buildTypes {
+        debug {
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+
+    buildFeatures { viewBinding false; buildConfig true }
+
+    // APK 파일명에 버전 포함 — mywhere1.0.0.apk
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            output.outputFileName = "mywhere${variant.versionName}.apk"
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    // 위치(FusedLocationProvider) — Firebase/google-services.json 불필요
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
+}

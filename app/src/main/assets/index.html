@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>myWhere</title>
+<link rel="stylesheet" href="leaflet/leaflet.css" />
+<style>
+  :root{
+    --ink:#080B11; --ink2:#0C1119; --surface:#10161F; --surface2:#161D29;
+    --hair:#202938; --hair2:#2B3647; --text:#EAEFF7; --muted:#8A97AD; --faint:#5A6577;
+    --live:#39E0D0; --live-soft:rgba(57,224,208,.14); --violet:#8B7CFF;
+    --amber:#F4B740; --coral:#FF6B7A;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Roboto Mono",Menlo,monospace;
+    --sans:"Pretendard Variable","Pretendard",-apple-system,"Apple SD Gothic Neo","Noto Sans KR",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--ink);color:var(--text);
+    font-family:var(--sans);overscroll-behavior:none;-webkit-font-smoothing:antialiased;}
+  body{display:flex;flex-direction:column;}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.2px;}
+
+  /* 아이콘 */
+  .ic{display:inline-flex;width:20px;height:20px;flex:none;color:currentColor;}
+  .ic svg{width:100%;height:100%;display:block;}
+  .ic.sm{width:16px;height:16px;}
+
+  /* 상단바 */
+  .topbar{padding:calc(env(safe-area-inset-top) + 14px) 18px 14px;
+    background:linear-gradient(180deg,#0E141E,rgba(8,11,17,0));
+    display:flex;align-items:center;gap:11px;}
+  .mark{width:30px;height:30px;border-radius:9px;position:relative;flex:none;
+    background:radial-gradient(120% 120% at 30% 20%,#1A2740,#0D1320);
+    border:1px solid var(--hair2);display:flex;align-items:center;justify-content:center;}
+  .mark::after{content:"";width:9px;height:9px;border-radius:50%;background:var(--live);
+    box-shadow:0 0 12px var(--live);animation:beat 2.4s infinite;}
+  @keyframes beat{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(.82);}}
+  .wordmark{font-weight:700;font-size:17px;letter-spacing:-.3px;line-height:1;}
+  .wordmark b{color:var(--live);font-weight:700;}
+  .wordmark small{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);
+    margin-top:3px;letter-spacing:.4px;text-transform:uppercase;}
+  .topspace{flex:1;}
+  .livepill{display:none;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;
+    font-weight:600;color:var(--live);background:var(--live-soft);border:1px solid rgba(57,224,208,.3);
+    padding:5px 9px;border-radius:7px;letter-spacing:.5px;}
+  .livepill.on{display:inline-flex;}
+  .livepill .bd{width:6px;height:6px;border-radius:50%;background:var(--live);animation:beat 1.4s infinite;}
+
+  .content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .page{display:none;padding:6px 14px 96px;}
+  .page.active{display:block;}
+
+  /* 카드 */
+  .card{background:linear-gradient(180deg,var(--surface),#0E141D);
+    border:1px solid var(--hair);border-radius:18px;padding:16px;margin-bottom:13px;}
+  .card-h{display:flex;align-items:center;gap:9px;margin-bottom:13px;}
+  .card-h .ic{color:var(--live);}
+  .card-h h3{margin:0;font-size:14.5px;font-weight:650;letter-spacing:-.2px;}
+  .card-h .eyebrow{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--faint);
+    letter-spacing:.6px;text-transform:uppercase;}
+  .hint{font-size:12.5px;color:var(--muted);line-height:1.6;}
+  .hint b{color:var(--text);font-weight:600;}
+
+  /* 버튼 */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    padding:13px 14px;border:1px solid transparent;border-radius:13px;font-size:14.5px;
+    font-weight:600;font-family:var(--sans);color:var(--ink);cursor:pointer;letter-spacing:-.2px;
+    background:var(--live);transition:transform .08s ease,background .15s ease,border-color .15s;}
+  .btn .ic{width:18px;height:18px;}
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.4;}
+  .btn.sec{background:var(--surface2);color:var(--text);border-color:var(--hair2);}
+  .btn.ghost{background:transparent;color:var(--text);border-color:var(--hair2);}
+  .btn.line{background:transparent;color:var(--live);border-color:rgba(57,224,208,.4);}
+  .btn.danger{background:transparent;color:var(--coral);border-color:rgba(255,107,122,.4);}
+  .btn.sm{width:auto;padding:9px 14px;font-size:13px;border-radius:10px;}
+  .row{display:flex;gap:9px;}
+  .row>*{flex:1;}
+  .mt{margin-top:11px;}
+  .mt6{margin-top:7px;}
+
+  /* 입력 */
+  label.fld{display:block;font-size:11.5px;color:var(--muted);margin:13px 0 6px;font-weight:500;}
+  input[type=text],input[type=number],textarea,select{
+    width:100%;background:var(--ink2);border:1px solid var(--hair);border-radius:12px;
+    color:var(--text);padding:12px;font-size:14.5px;font-family:var(--sans);}
+  input.mono,textarea.mono{font-family:var(--mono);}
+  textarea{min-height:92px;resize:vertical;line-height:1.55;}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--live);
+    box-shadow:0 0 0 3px var(--live-soft);}
+
+  /* 토글 */
+  .toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:13px 0;border-bottom:1px solid var(--hair);}
+  .toggle:last-child{border-bottom:none;}
+  .toggle .lab{font-size:14px;font-weight:550;}
+  .toggle .lab small{display:block;color:var(--muted);font-size:11.5px;margin-top:3px;font-weight:400;line-height:1.5;}
+  .sw{position:relative;width:46px;height:27px;border-radius:20px;background:var(--hair2);
+    transition:.2s;flex:none;cursor:pointer;}
+  .sw.on{background:var(--live);}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;
+    background:#fff;transition:.2s;}
+  .sw.on::after{left:22px;}
+
+  /* 상태칩 */
+  .chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:550;
+    padding:6px 11px;border-radius:9px;background:var(--ink2);color:var(--muted);border:1px solid var(--hair);}
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);}
+  .chip.ok{color:var(--live);border-color:rgba(57,224,208,.32);}
+  .chip.ok .dot{background:var(--live);box-shadow:0 0 8px var(--live);}
+  .chip.no{color:var(--coral);border-color:rgba(255,107,122,.32);}
+  .chip.no .dot{background:var(--coral);}
+
+  /* 지도 + 오버레이 */
+  .mapwrap{position:relative;margin-top:12px;}
+  .map{width:100%;height:300px;border-radius:15px;overflow:hidden;border:1px solid var(--hair);background:#0A0E16;}
+  .map.tall{height:380px;}
+  .leaflet-container{background:#0A0E16;font-family:var(--mono);}
+  .layerseg{position:absolute;top:10px;right:10px;z-index:600;display:flex;gap:2px;
+    background:rgba(10,14,22,.82);backdrop-filter:blur(8px);border:1px solid var(--hair2);
+    border-radius:10px;padding:3px;}
+  .layerseg button{border:none;background:transparent;color:var(--muted);font-family:var(--mono);
+    font-size:11px;font-weight:600;padding:6px 9px;border-radius:7px;letter-spacing:.2px;}
+  .layerseg button.on{background:var(--live);color:var(--ink);}
+
+  /* 타임라인 스크러버 (시그니처) */
+  .scrub{margin-top:11px;background:var(--ink2);border:1px solid var(--hair);border-radius:13px;padding:11px 12px;}
+  .scrub-head{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+  .scrub-play{width:34px;height:34px;flex:none;border-radius:9px;border:1px solid var(--hair2);
+    background:var(--surface2);color:var(--text);display:flex;align-items:center;justify-content:center;}
+  .scrub-play .ic{width:17px;height:17px;}
+  .scrub-time{font-family:var(--mono);font-size:13px;color:var(--text);font-weight:600;flex:1;letter-spacing:-.3px;}
+  .scrub-time .d{color:var(--faint);font-size:11px;margin-left:4px;}
+  .scrub-speed{border:1px solid var(--hair2);background:var(--surface2);color:var(--muted);
+    font-family:var(--mono);font-size:11.5px;font-weight:600;padding:7px 9px;border-radius:8px;flex:none;}
+  .scrub-live{border:1px solid var(--hair2);background:var(--surface2);color:var(--muted);
+    font-family:var(--mono);font-size:11px;font-weight:700;padding:7px 11px;border-radius:8px;flex:none;letter-spacing:.5px;}
+  .scrub-live.on{background:var(--live-soft);color:var(--live);border-color:rgba(57,224,208,.4);}
+  .scrub-track{position:relative;height:30px;display:flex;align-items:center;}
+  .scrub-ticks{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;
+    padding:0 2px;pointer-events:none;}
+  .scrub-ticks i{width:1px;height:8px;background:var(--hair2);display:block;}
+  .scrub-ticks i.big{height:13px;background:var(--faint);}
+  .scrub-range{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+    background:var(--hair2);outline:none;position:relative;z-index:2;margin:0;}
+  .scrub-range::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+    background:var(--live);border:3px solid var(--ink);box-shadow:0 0 10px var(--live);cursor:pointer;}
+  .scrub-empty{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:center;padding:4px 0;}
+
+  /* 텔레메트리 표 */
+  .tele{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--hair);
+    border:1px solid var(--hair);border-radius:13px;overflow:hidden;margin-top:12px;}
+  .tele .cell{background:var(--surface);padding:11px 13px;}
+  .tele .cell.full{grid-column:1/-1;}
+  .tele .k{font-size:10.5px;color:var(--faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;}
+  .tele .v{font-size:14px;color:var(--text);margin-top:4px;word-break:break-all;}
+  .tele .v.mono{font-size:13.5px;}
+
+  /* 멤버 */
+  .mem{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--hair);}
+  .mem:last-child{border-bottom:none;}
+  .mem .av{width:32px;height:32px;border-radius:9px;flex:none;display:flex;align-items:center;
+    justify-content:center;font-weight:700;font-size:13px;color:var(--ink);}
+  .mem .nm{font-size:14px;font-weight:600;flex:1;}
+  .mem .ago{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:22px 8px;line-height:1.6;}
+
+  .alert{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.55;
+    color:var(--amber);background:rgba(244,183,64,.08);border:1px solid rgba(244,183,64,.28);
+    border-radius:12px;padding:11px 12px;margin-top:12px;}
+  .alert .ic{color:var(--amber);margin-top:1px;}
+  .badge{display:inline-flex;align-items:center;font-family:var(--mono);font-size:9.5px;font-weight:700;
+    color:var(--violet);border:1px solid rgba(139,124,255,.4);border-radius:6px;padding:2px 6px;
+    margin-left:7px;letter-spacing:.4px;text-transform:uppercase;}
+
+  /* 하단탭 */
+  .tabbar{display:flex;background:rgba(12,17,25,.92);backdrop-filter:blur(12px);
+    border-top:1px solid var(--hair);padding-bottom:env(safe-area-inset-bottom);}
+  .tabbar button{flex:1;background:none;border:none;color:var(--faint);padding:10px 0 11px;
+    font-size:10.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:4px;
+    letter-spacing:-.1px;}
+  .tabbar button .ic{width:22px;height:22px;}
+  .tabbar button.on{color:var(--live);}
+
+  .about{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.8;}
+  .about b{color:var(--text);}
+  .about .ver{font-family:var(--mono);color:var(--live);}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="mark"></div>
+    <div class="wordmark">my<b>Where</b><small>family telemetry</small></div>
+    <div class="topspace"></div>
+    <div class="livepill" id="livePill"><span class="bd"></span>LIVE</div>
+  </div>
+
+  <div class="content">
+    <!-- ===== 내 위치 ===== -->
+    <section id="pg-send" class="page active">
+      <div class="card">
+        <div class="card-h"><i class="ic" data-ic="navigation"></i><h3>내 위치</h3>
+          <span class="eyebrow" id="sendStatus">standby</span></div>
+        <div class="hint">실시간 위치와 이동 궤적을 지도에서 봅니다. 아래 타임라인을 끌면 지나온 경로를 시간대별로 되감아 볼 수 있어요.</div>
+        <div class="mapwrap">
+          <div id="mapSend" class="map tall"></div>
+          <div class="layerseg" id="sendLayers"></div>
+        </div>
+        <div id="sendScrub"></div>
+        <div class="row mt">
+          <button class="btn sec sm" id="btnGetLoc" style="flex:1;"><i class="ic sm" data-ic="crosshair"></i>현재 위치</button>
+          <button class="btn sec sm" id="btnTrackToggle" style="flex:1;"><i class="ic sm" data-ic="route"></i><span id="trackLbl">실시간 추적</span></button>
+        </div>
+        <div class="tele" id="sendTele" style="display:none;"></div>
+        <div class="row mt">
+          <button class="btn" id="btnShare" disabled><i class="ic" data-ic="send"></i>카톡전송</button>
+          <button class="btn sec" id="btnCopy" disabled><i class="ic" data-ic="copy"></i>복사</button>
+        </div>
+        <div class="row mt">
+          <button class="btn sec sm" id="btnSendGoogle" style="flex:1;"><i class="ic sm" data-ic="pin"></i>구글지도</button>
+          <button class="btn sec sm" id="btnSendTmap" style="flex:1;"><i class="ic sm" data-ic="route"></i>T맵</button>
+        </div>
+        <button class="btn ghost mt" id="btnShareTmap"><i class="ic" data-ic="route"></i>T맵 길안내로 전송</button>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><i class="ic" data-ic="route"></i><h3>이동 기록</h3></div>
+        <div class="toggle">
+          <div class="lab">백그라운드 기록<small>화면을 꺼도 경로를 모아 궤적·방향을 그립니다 (배터리 절약 모드)</small></div>
+          <div class="sw" id="swTrack"></div>
+        </div>
+        <button class="btn danger mt" id="btnClearTrail"><i class="ic" data-ic="trash"></i>이동기록 지우기</button>
+      </div>
+    </section>
+
+    <!-- ===== 받기 ===== -->
+    <section id="pg-recv" class="page">
+      <div class="card">
+        <div class="card-h"><i class="ic" data-ic="inbox"></i><h3>받은 위치</h3></div>
+        <div class="hint">받은 메시지를 붙여넣으면 주소·좌표·시각과 이동 궤적이 지도에 표시됩니다. 타임라인으로 상대의 경로를 되감아 볼 수 있어요.</div>
+        <textarea id="recvInput" class="mt mono" placeholder="받은 [위치공유] 메시지 전체를 붙여넣으세요"></textarea>
+        <div class="row mt">
+          <button class="btn" id="btnDecode"><i class="ic" data-ic="navigation"></i>위치 보기</button>
+          <button class="btn sec" id="btnPasteClear"><i class="ic" data-ic="x"></i>지우기</button>
+        </div>
+      </div>
+
+      <div class="card" id="recvInfoCard" style="display:none;">
+        <div class="card-h"><i class="ic" data-ic="pin"></i><h3 id="recvTitle">받은 위치</h3></div>
+        <div class="mapwrap">
+          <div id="mapRecv" class="map tall"></div>
+          <div class="layerseg" id="recvLayers"></div>
+        </div>
+        <div id="recvScrub"></div>
+        <div class="tele" id="recvTele"></div>
+        <div class="row mt">
+          <button class="btn" id="btnOpenMaps"><i class="ic" data-ic="pin"></i>구글지도</button>
+          <button class="btn sec" id="btnOpenTmap"><i class="ic" data-ic="route"></i>T맵</button>
+        </div>
+      </div>
+      <div class="card" id="recvEmpty">
+        <div class="empty">아직 확인한 위치가 없습니다.<br>받은 메시지를 붙여넣어 보세요.</div>
+      </div>
+    </section>
+
+    <!-- ===== 그룹 ===== -->
+    <section id="pg-group" class="page">
+      <div class="card">
+        <div class="card-h"><i class="ic" data-ic="shield"></i><h3>가족 페어링</h3><span class="eyebrow">최초 1회</span></div>
+        <div class="hint">처음 한 번 <b>직접 만나서</b> QR로 키를 나눕니다. 키는 네트워크에 올라가지 않아요. 이후 모든 위치는 <b>종단간 암호화</b>되어 공유되고, 키 없는 접근은 그룹에 즉시 드러납니다.</div>
+        <div class="row mt">
+          <button class="btn" id="btnPairCreate"><i class="ic" data-ic="qr"></i>새 그룹 만들기</button>
+          <button class="btn sec" id="btnPairScan"><i class="ic" data-ic="camera"></i>QR 스캔</button>
+        </div>
+        <button class="btn ghost mt" id="btnPairManual"><i class="ic" data-ic="edit"></i>코드 직접 입력</button>
+        <div id="pairManualBox" class="mt" style="display:none;">
+          <textarea id="pairManualInput" class="mono" rows="3" placeholder="MYWHEREKEY1:..."></textarea>
+          <button class="btn mt" id="btnPairManualApply">적용</button>
+        </div>
+        <div id="pairOut" class="mt" style="display:none;text-align:center;">
+          <div class="hint">가족이 이 QR을 'QR 스캔'으로 비추게 하세요</div>
+          <img id="pairQr" alt="페어링 QR" style="width:216px;height:216px;background:#fff;border-radius:14px;padding:11px;margin:11px auto;display:block;" />
+          <button class="btn line sm" id="btnPairCopy" style="margin:0 auto;"><i class="ic sm" data-ic="copy"></i>코드 복사</button>
+        </div>
+        <div id="e2eStatus" class="chip mt" style="display:inline-flex;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><i class="ic" data-ic="users"></i><h3>실시간 공유</h3></div>
+        <div class="chips mt6">
+          <span class="chip" id="chipRelay"><span class="dot"></span>백엔드</span>
+          <span class="chip" id="chipGroupRun"><span class="dot"></span>공유</span>
+        </div>
+        <label class="fld">그룹 코드</label>
+        <input type="text" id="grpCode" class="mono" placeholder="family-1234" />
+        <button class="btn lg mt" id="btnGroupToggle"><i class="ic" data-ic="play"></i><span id="groupToggleLbl">실시간 공유 시작</span></button>
+        <div class="alert" id="relayWarn" style="display:none;"><i class="ic sm" data-ic="alert"></i><div>설정에서 실시간 백엔드(Firebase 또는 Worker) URL을 입력해야 실시간 그룹이 동작합니다. 카톡 수동 공유는 백엔드 없이도 됩니다.</div></div>
+      </div>
+
+      <div class="card" id="groupMapCard" style="display:none;">
+        <div class="card-h"><i class="ic" data-ic="satellite"></i><h3>그룹 지도</h3><span class="eyebrow" id="groupCount"></span></div>
+        <div class="alert" id="unknownWarn" style="display:none;"><i class="ic sm" data-ic="alert"></i><div>알 수 없는 피어 <b id="unknownCount">0</b>건 — 그룹 키 없는 접근이 감지됐어요. 키 유출이 의심되면 '새 그룹 만들기'로 재발급 후 다시 페어링하세요.</div></div>
+        <div class="mapwrap">
+          <div id="mapGroup" class="map tall"></div>
+          <div class="layerseg" id="groupLayers"></div>
+        </div>
+        <div id="groupScrub"></div>
+        <div id="memList" class="mt"></div>
+      </div>
+    </section>
+
+    <!-- ===== QR 스캐너 ===== -->
+    <div id="scanOverlay" style="display:none;position:fixed;inset:0;background:#000;z-index:9999;">
+      <video id="scanVideo" playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+      <canvas id="scanCanvas" style="display:none;"></canvas>
+      <div style="position:absolute;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top) + 18px) 18px 18px;color:#fff;text-align:center;font-weight:600;font-size:14px;background:linear-gradient(#000c,#0000);">가족의 '새 그룹 만들기' QR을 비추세요</div>
+      <button id="scanCancel" class="btn sec sm" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);width:auto;padding:12px 30px;">취소</button>
+    </div>
+
+    <!-- ===== 설정 ===== -->
+    <section id="pg-set" class="page">
+      <div class="card">
+        <div class="card-h"><i class="ic" data-ic="user"></i><h3>내 정보</h3></div>
+        <label class="fld">표시 이름</label>
+        <input type="text" id="setName" placeholder="예: 아빠" />
+        <label class="fld">그룹 코드</label>
+        <input type="text" id="setGroup" class="mono" placeholder="family-1234" />
+        <label class="fld">실시간 백엔드</label>
+        <select id="setBackend">
+          <option value="firebase">Firebase — 관리형 · 실시간 푸시 (권장)</option>
+          <option value="worker">Cloudflare Worker — 직접 운영</option>
+        </select>
+        <div id="fldFirebase">
+          <label class="fld">Firebase Database URL</label>
+          <input type="text" id="setFirebase" class="mono" placeholder="https://프로젝트-default-rtdb.firebaseio.com" />
+          <div class="hint mt6">Firebase 콘솔 → Realtime Database 주소를 붙여넣으세요. 서버 운영은 없습니다.</div>
+        </div>
+        <div id="fldRelay" style="display:none;">
+          <label class="fld">Worker URL</label>
+          <input type="text" id="setRelay" class="mono" placeholder="https://내워커.workers.dev" />
+        </div>
+        <div id="setE2E" class="chip mt" style="display:inline-flex;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><i class="ic" data-ic="sliders"></i><h3>이동 · 표시</h3></div>
+        <label class="fld">궤적 표시 시간 (분) — 이 시간 이내 경로를 잇습니다</label>
+        <input type="number" id="setWindow" class="mono" min="1" max="1440" />
+        <label class="fld">갱신 간격 (초) — 길수록 배터리 절약</label>
+        <input type="number" id="setInterval" class="mono" min="5" max="600" />
+        <label class="fld">최소 이동 거리 (m) — 미만 이동은 무시</label>
+        <input type="number" id="setMinDist" class="mono" min="0" max="1000" />
+        <div class="toggle mt">
+          <div class="lab">고정밀 GPS<small>끄면 균형 모드로 배터리를 더 아낍니다</small></div>
+          <div class="sw" id="swHiAcc"></div>
+        </div>
+        <div class="toggle">
+          <div class="lab">앱 켤 때 그룹 자동 시작<small>실시간 공유를 자동으로 켭니다</small></div>
+          <div class="sw" id="swAuto"></div>
+        </div>
+        <button class="btn mt" id="btnSaveSet"><i class="ic" data-ic="check"></i>설정 저장</button>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><i class="ic" data-ic="shield"></i><h3>권한</h3></div>
+        <div class="toggle">
+          <div class="lab">위치 (정밀)<small>내 위치를 가져오려면 필요</small></div>
+          <button class="btn sec sm" id="permFine">요청</button>
+        </div>
+        <div class="toggle">
+          <div class="lab">백그라운드 위치<small>화면을 꺼도 실시간 공유 지속</small></div>
+          <button class="btn sec sm" id="permBg">요청</button>
+        </div>
+        <div class="toggle">
+          <div class="lab">알림<small>공유 진행 알림 표시</small></div>
+          <button class="btn sec sm" id="permNoti">요청</button>
+        </div>
+        <button class="btn ghost mt" id="btnAppSettings"><i class="ic" data-ic="gear"></i>앱 권한 설정 열기</button>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><i class="ic" data-ic="download"></i><h3>백업</h3></div>
+        <div class="row">
+          <button class="btn sec" id="btnExport"><i class="ic" data-ic="download"></i>내보내기</button>
+          <button class="btn sec" id="btnImport"><i class="ic" data-ic="upload"></i>가져오기</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="about"><b>myWhere</b> <span class="ver" id="verTxt">v1.1.0</span><br>
+          영찬영하 Daddy · J패밀리<br>내 위치를 안전하게, 가족과 함께</div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="tabbar">
+    <button class="on" data-tab="send"><i class="ic" data-ic="navigation"></i>내 위치</button>
+    <button data-tab="recv"><i class="ic" data-ic="inbox"></i>받기</button>
+    <button data-tab="group"><i class="ic" data-ic="users"></i>그룹</button>
+    <button data-tab="set"><i class="ic" data-ic="sliders"></i>설정</button>
+  </nav>
+
+  <script src="leaflet/leaflet.js"></script>
+  <script src="qrcode.js"></script>
+  <script src="jsQR.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+// 루트 build.gradle — 플러그인 버전만 선언 (검증된 고정 조합)
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.3.2'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.23'
+    }
+}
+
+allprojects {
+    // repositories는 settings.gradle의 dependencyResolutionManagement에서 관리
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}
